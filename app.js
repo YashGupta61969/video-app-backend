@@ -8,20 +8,22 @@ const db = require('./db');
 const path = require('path');
 const port = process.env.PORT || 8000
 
-const app = express()
+const app = express();
 
-require('./db')
-app.use(fileUpload({
+require("./db");
+app.use(
+  fileUpload({
     limits: {
-        fileSize: 50000000, // Around 50MB
+      fileSize: 50000000, // Around 50MB
     },
     abortOnLimit: true,
-}));
+  })
+);
 
 app.use('/video-app/converted-videos', express.static('./converted-videos'));
 app.use(express.urlencoded({ extended: true }));
-app.use(cors())
-app.use(express.json())
+app.use(cors());
+app.use(express.json());
 
 app.get('/video-app', async (req, res) => {
     try {
