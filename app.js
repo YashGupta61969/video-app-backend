@@ -3,7 +3,6 @@ const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs')
 require('dotenv').config()
 const fileUpload = require('express-fileupload');
-// const { Blob } = require("buffer");
 const cors = require('cors');
 const db = require('./db');
 const path = require('path');
@@ -19,23 +18,36 @@ app.use(fileUpload({
     abortOnLimit: true,
 }));
 
-app.use('/converted-videos', express.static('./converted-videos'));
+app.use('/video-app/converted-videos', express.static('./converted-videos'));
 app.use(express.urlencoded({ extended: true }));
 app.use(cors())
 app.use(express.json())
 
-app.get('/', async (req, res) => {
+app.get('/video-app', async (req, res) => {
     try {
         const videos = await db.videos.findAll({})
-        res.send(videos)
+        res.send({messgae:'success',videos})
     } catch (error) {
         res.send(error)
     }
 })
 
 
-app.post('/', async (req, res) => {
-    fs.writeFile(`./raw-videos/${req.files.video.name}`, req.files.video.data, "binary", function (err) {
+app.post('/video-app', async (req, res) => {
+
+    fs.readdir('raw-videos', (err, files) => {
+        if (err) throw err;
+
+        for (const file of files) {
+            fs.unlink(path.join('raw-videos', file), (err) => {
+                if (err) throw err;
+            });
+        }
+    });
+
+    const name = new Date().getTime();
+    
+    fs.writeFile(`./raw-videos/${name}.mp4`, req.files.video.data, "binary", function (err) {
         if (err) {
             console.log(err);
         } else {
@@ -43,18 +55,6 @@ app.post('/', async (req, res) => {
                 if (err) {
                     res.status(500).send({ message: 'Internal Sevrer error' })
                 } else {
-
-                    const removeRawVideo = () => {
-                        fs.readdir('raw-videos', (err, files) => {
-                            if (err) throw err;
-
-                            for (const file of files) {
-                                fs.unlink(path.join('raw-videos', file), (err) => {
-                                    if (err) throw err;
-                                });
-                            }
-                        });
-                    }
 
                     const convertVideo = () => {
                         files.map(f => {
@@ -65,7 +65,7 @@ app.post('/', async (req, res) => {
                                     filter: 'drawtext',
                                     options: {
                                         text: 'What Is The Longest River In The World ?',
-                                        fontsize: '(h/20)',
+                                        fontsize: '(h/25)',
                                         fontcolor: 'white',
                                         box: 1,
                                         boxborderw: 10,
@@ -75,37 +75,34 @@ app.post('/', async (req, res) => {
                                     }
                                 })
                                 .outputOptions(['-frag_duration 100', '-movflags frag_keyframe+empty_moov', '-pix_fmt yuv420p'])
-                                .output(`converted-videos/${f}`)
+                                .output(`converted-videos/${name}.mp4`)
                                 .on('error', function (err, stdout, stderr) {
                                     console.log('err', err.message)
                                     console.log('stdout', stdout)
                                     console.log('stderr', stderr)
                                 }).run();
-                        });
+                            });
                     }
-
                     const data = {
-                        // To Be Replaced With The Deployed Url
-                        video: `http://localhost:8000/converted-videos\\${req.files.video.name.replace(/ /g, '')}`,
+                        // video: `http://localhost:8000/video-app/converted-videos\\${name}.mp4`,
+                        video: `http://142.93.219.133/video-app/converted-videos\\${name}.mp4`,
                         name: req.files.name
                     }
 
+                    convertVideo()
 
                     db.videos.create(data).then(data => {
                         // removeRawVideo()
                         res.send({ status: 'success', ...data.dataValues })
                     }).catch(err => {
-                        console.log(err)
-                        res.status(500).send({ status: 'error', message: 'Internal Server Error' })
+                        res.status(500).send({ status: 'error',err, message: 'Internal Server Error' })
                     })
-                    convertVideo()
                 }
             })
         }
     });
 })
 
-
 app.listen(port, () => {
-    console.log('first')
+    console.log(`http://localhost:${port}`)
 })
