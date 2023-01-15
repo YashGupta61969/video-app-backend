@@ -1,23 +1,25 @@
+require('dotenv').config()
+require("./db");
 const express = require('express')
 const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs')
-require('dotenv').config()
 const fileUpload = require('express-fileupload');
 const cors = require('cors');
-const db = require('./db');
 const path = require('path');
+const { uploadBytes, ref, getDownloadURL } = require('firebase/storage');
+const { storage,database } = require('./firebase');
+const { addDoc, collection } = require('firebase/firestore');
 const port = process.env.PORT || 8000
 
 const app = express();
 
-require("./db");
 app.use(
-  fileUpload({
-    limits: {
-      fileSize: 50000000, // Around 50MB
-    },
-    abortOnLimit: true,
-  })
+    fileUpload({
+        limits: {
+            fileSize: 50000000, // Around 50MB
+        },
+        abortOnLimit: true,
+    })
 );
 
 app.use('/video-app/converted-videos', express.static('./converted-videos'));
@@ -25,39 +27,51 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(express.json());
 
+
+
 app.get('/video-app', async (req, res) => {
     try {
         const videos = await db.videos.findAll({})
-        res.send({messgae:'success',videos})
+        res.send({ messgae: 'success', videos })
     } catch (error) {
         res.send(error)
     }
 })
 
-
 app.post('/video-app', async (req, res) => {
 
+    const name = new Date().getTime();
+    
+    // Removes Previously Added Videos
     fs.readdir('raw-videos', (err, files) => {
-        if (err) throw err;
+        if (err){
+            // return res.status(500).send({ message: 'Internal Sevrer error' })
+        }
 
         for (const file of files) {
             fs.unlink(path.join('raw-videos', file), (err) => {
-                if (err) throw err;
+                if (err){
+                    // return res.status(500).send({ message: 'Internal Sevrer error' })
+                }
             });
         }
     });
 
-    const name = new Date().getTime();
-    
+    // Creates a raw video in the raw-videos dir
     fs.writeFile(`./raw-videos/${name}.mp4`, req.files.video.data, "binary", function (err) {
         if (err) {
-            console.log(err);
+            // return res.status(500).send({ message: 'Internal Sevrer error' })
+            console.log(err)
         } else {
+
+            // Reads the raw-videos dir after creation
             fs.readdir('./raw-videos/', (err, files) => {
                 if (err) {
-                    res.status(500).send({ message: 'Internal Sevrer error' })
+                    // return res.status(500).send({ message: 'Internal Sevrer error' })
+                    console.log(err)
                 } else {
 
+                    // converts the raw video to add text and push it to converted-videos dir
                     const convertVideo = () => {
                         files.map(f => {
                             const command = ffmpeg({ source: `./raw-videos/${f}` })
@@ -83,21 +97,36 @@ app.post('/video-app', async (req, res) => {
                                     console.log('stdout', stdout)
                                     console.log('stderr', stderr)
                                 }).run();
-                            });
-                    }
-                    const data = {
-                        // video: `http://localhost:8000/video-app/converted-videos\\${name}.mp4`,
-                        video: `http://142.93.219.133/video-app/converted-videos\\${name}.mp4`,
-                        name: req.files.name
+                        });
                     }
 
                     convertVideo()
 
-                    db.videos.create(data).then(data => {
-                        // removeRawVideo()
-                        res.send({ status: 'success', ...data.dataValues })
-                    }).catch(err => {
-                        res.status(500).send({ status: 'error',err, message: 'Internal Server Error' })
+                    fs.readdir('./converted-videos', async (err, files) => {
+                        if (err) {
+                            // return res.status(500).send({ message: 'Internal Sevrer error' })
+                            console.log(err)
+                        } else {
+                            files.map(async (file) => {
+
+                                fs.readFile(`./converted-videos/${file}`, async (error, item) => {
+                                    if (error) {
+                                        // return res.status(500).send({ message: 'Internal Sevrer error' })
+                                        console.log(error)
+                                    } else {
+                                        const refrence = ref(storage, `${file}`)
+                                        const snap = await uploadBytes(refrence, item)
+                                        const url = await getDownloadURL(ref(storage, snap.ref.fullPath))
+
+                                        await addDoc(collection(database,'videos'),{
+                                            media:url
+                                        })
+                                        
+                                       return res.send({message:"Video Uploaded Successfully"})
+                                    }
+                                })
+                            })
+                        }
                     })
                 }
             })
