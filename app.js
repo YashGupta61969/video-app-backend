@@ -136,7 +136,34 @@ app.post("/video-app", upload, async (req, res) => {
                         }
                       });
 
-        
+                      // Removes Previously converted Videos
+                      fs.readdir("converted-videos", (err, files) => {
+                        if (err) {
+                          return res.status(500).send({
+                            message: "Internal Sevrer error",
+                            error3: err,
+                          });
+                        }
+
+                        for (const file of files) {
+                          fs.unlink(
+                            path.join("converted-videos", file),
+                            (err) => {
+                              if (err) {
+                                return res.status(500).send({
+                                  message: "Internal Sevrer error",
+                                  error4: err,
+                                });
+                              }else{
+                                  return res.send({
+                                    message: "Video Uploaded Successfully",
+                                  });
+                              }
+                            }
+                          );
+                        }
+                      });
+
                     }
                   }
                 );
