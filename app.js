@@ -67,11 +67,11 @@ app.post("/video-app", upload, async (req, res) => {
         .videoFilters({
           filter: "drawtext",
           options: {
-            text: "What Is The Longest River In The World ?",
-            fontsize: "(h/25)",
+            text: "What Is Longest River In The World?",
+            fontsize: 150,
             fontcolor: "white",
             box: 1,
-            boxborderw: 10,
+            boxborderw: 15,
             fontfile:'./Dirtyboy-BxYl.ttf',
             boxcolor: "black@0.4",
             x: 10,
@@ -80,6 +80,7 @@ app.post("/video-app", upload, async (req, res) => {
         })
         .outputOptions([
           "-frag_duration 100",
+          "-strict -2",
           "-movflags frag_keyframe+empty_moov",
           "-pix_fmt yuv420p",
         ])
@@ -135,34 +136,7 @@ app.post("/video-app", upload, async (req, res) => {
                         }
                       });
 
-                      // Removes Previously converted Videos
-                      fs.readdir("converted-videos", (err, files) => {
-                        if (err) {
-                          return res.status(500).send({
-                            message: "Internal Sevrer error",
-                            error3: err,
-                          });
-                        }
-
-                        for (const file of files) {
-                          fs.unlink(
-                            path.join("converted-videos", file),
-                            (err) => {
-                              if (err) {
-                                return res.status(500).send({
-                                  message: "Internal Sevrer error",
-                                  error4: err,
-                                });
-                              }else{
-                                  return res.send({
-                                    message: "Video Uploaded Successfully",
-                                  });
-                              }
-                            }
-                          );
-                        }
-                      });
-
+        
                     }
                   }
                 );
