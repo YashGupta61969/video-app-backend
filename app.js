@@ -1,9 +1,8 @@
 require("dotenv").config();
-require("./db");
+// require("./db");
 const express = require("express");
 const ffmpeg = require("fluent-ffmpeg");
 const fs = require("fs");
-// const fileUpload = require('express-fileupload');
 const multer = require("multer");
 const cors = require("cors");
 const path = require("path");
@@ -14,27 +13,7 @@ const port = process.env.PORT || 8000;
 
 const app = express();
 
-// const multerStorage = multer.diskStorage({
-//   destination: "raw-videos",
-//   filename: (req, file, cb) => {
-//     cb(
-//       null,
-//        Date.now()
-//       );
-//     },
-// });
-
 const upload = multer({ dest: 'raw-videos/' }).single('video')
-
-// const upload = multer({ storage: multerStorage }).single("video");
-// app.use(
-//     fileUpload({
-//         limits: {
-//             fileSize: 50000000, // Around 50MB
-//         },
-//         abortOnLimit: true,
-//     })
-// );
 
 app.use("/video-app/converted-videos", express.static("./converted-videos"));
 app.use(express.urlencoded({ extended: true }));
@@ -72,7 +51,7 @@ app.post("/video-app", upload, async (req, res) => {
             fontcolor: "white",
             box: 1,
             boxborderw: 15,
-            fontfile:'./Dirtyboy-BxYl.ttf',
+            fontfile:'./adventpro-bold.ttf',
             boxcolor: "black@0.4",
             x: 10,
             y: 10,
@@ -96,7 +75,7 @@ app.post("/video-app", upload, async (req, res) => {
                   .status(500)
                   .send({ message: "Internal Sevrer error", error: err });
               } else {
-                const file = files[files.length - 1];
+                const file = files[0];
                 fs.readFile(
                   `./converted-videos/${file}`,
                   async (error, item) => {
